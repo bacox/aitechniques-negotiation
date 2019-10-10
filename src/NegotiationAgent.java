@@ -18,7 +18,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     private double totalTimeGiven = 0;
     private double last15RoundsAvgTime = 0;
     private double lastBidTimestamp = 0;
-    private int currentPhase = 0;
+//    private int currentPhase = 0;
 
     private enum PHASE {
         ONE,
@@ -26,7 +26,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
         THREE;
     }
     private double[] phaseFractions = new double[] {28.0/36.0, 7.0/36.0, 1.0/36.0};
-    private PHASE phase;
+    private PHASE currentPhase;
 
     private ArrayList<Bid> opponentBids = new ArrayList<Bid>();
 
@@ -37,7 +37,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
 
         System.out.println("Discount Factor is " + getUtilitySpace().getDiscountFactor());
         System.out.println("Reservation Value is " + getUtilitySpace().getReservationValueUndiscounted());
-        phase = PHASE.ONE;
+        currentPhase = PHASE.ONE;
 
         // if you need to initialize some variables, please initialize them
         // below
@@ -50,7 +50,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     }
 
     public double concessionValueByPhase(double time) {
-        switch (phase) {
+        switch (currentPhase) {
             case ONE:
                 return concessionValue(1.0, (3.0/8.0),timeFractionByPhase(time));
             case TWO:
@@ -63,7 +63,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     }
 
     public double timeFractionByPhase(double time) {
-        switch (phase) {
+        switch (currentPhase) {
             case ONE:
                 return time / phaseFractions[0];
             case TWO:
@@ -77,15 +77,15 @@ public class NegotiationAgent extends AbstractNegotiationParty{
 
     public void updatePhase() {
         double time = getTimeLine().getTime();
-        switch (phase) {
+        switch (currentPhase) {
             case ONE:
                 if( time > phaseFractions[0]) {
-                    phase = PHASE.TWO;
+                    currentPhase = PHASE.TWO;
                 }
                 break;
             case TWO:
                 if( time > phaseFractions[0] + phaseFractions[1]) {
-                    phase = PHASE.THREE;
+                    currentPhase = PHASE.THREE;
                 }
                 break;
             case THREE:
@@ -98,8 +98,21 @@ public class NegotiationAgent extends AbstractNegotiationParty{
         return l + (0.2 * (1 - l));
     }
 
-    public Bid generateBid() {
-        return generateRandomBid();
+    public Bid generateBid(double l, double u) {
+        boolean bidInRange = false;
+        Bid bid = generateRandomBid();
+        while(!bidInRange) {
+            double util = this.getUtility(bid);
+            if(util >= l && util <= u) {
+                bidInRange = true;
+            }
+            bid = generateRandomBid();
+        }
+        return bid;
+    }
+
+    public Bid generateBid(double l) {
+        return generateBid(l, Integer.MAX_VALUE);
     }
 
 
@@ -107,15 +120,28 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     @Override
     public Action chooseAction(List<Class<? extends Action>> validActions) {
 
-    	Bid bid = generateBid();
-    	double bidUtil = this.getUtility(bid);
-    	System.out.println("Utility of our bid: " + bidUtil);
-    	System.out.println("Utility of last bid received: " + this.getUtility(lastReceivedBid));
         double time = getTimeLine().getTime();
-        System.out.println("This is phase " + phase + " " + concessionValueByPhase(time) + " \t\t " + timeFractionByPhase(time));
+        double l = concessionValueByPhase(time);
+        double u = upperBound(l);
+        Bid bid = generateRandomBid();
+        if (currentPhase == PHASE.ONE) {
+            if( Math.random() > 0.7) {
+                bid = generateBid(l, u);
+            } else {
+                bid = generateBid(l);
+            }
+        } else {
+//            Phase two and three
+            bid = opponentBids.get(1);
+        }
+
+        double bidUtil = this.getUtility(bid);
+        System.out.println("Utility of our bid: " + bidUtil);
+        System.out.println("Utility of last bid received: " + this.getUtility(lastReceivedBid));
+        System.out.println("This is phase " + currentPhase + " " + concessionValueByPhase(time) + " \t\t " + timeFractionByPhase(time));
 
         try {
-            Thread.sleep(500);
+            Thread.sleep(250);
         } catch (InterruptedException e) {
             System.out.println("Not allowed to sleep");
         }
@@ -127,7 +153,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     	}
     	
     	// In phase 3, we accept any bid if we estimate the number of rounds left to be less than 15
-    	if (currentPhase == 3 && this.numRoundsLeft() <= 15) {
+    	if (currentPhase == PHASE.THREE && this.numRoundsLeft() <= 15) {
     		return new Accept(getPartyId(), lastReceivedBid); 
     	}
     	
@@ -149,7 +175,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
         if (action instanceof Offer) {
             lastReceivedBid = ((Offer) action).getBid();
             this.updateLastBidTimestamp();
-            if(phase == PHASE.ONE) {
+            if(currentPhase == PHASE.ONE) {
 //                Save opponents bids for phase two and three
                 opponentBids.add(((Offer) action).getBid());
             }
