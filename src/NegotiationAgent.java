@@ -12,7 +12,7 @@ import genius.core.parties.NegotiationInfo;
 public class NegotiationAgent extends AbstractNegotiationParty{
 
     private Bid lastReceivedBid = null;
-    private List<Bid> listOfBids = new ArrayList<Bid>();
+    private int numberOfBids = 0;
     private double totalTimeGiven = 0;
     private double last15RoundsAvgTime = 0;
     private double lastBidTimestamp = 0;
@@ -66,8 +66,8 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     public void receiveMessage(AgentID sender, Action action) {
         super.receiveMessage(sender, action);
         if (action instanceof Offer) {
-            this.updateLastBidTimestamp();
             lastReceivedBid = ((Offer) action).getBid();
+            this.updateLastBidTimestamp();
         }
     }
 
@@ -77,6 +77,8 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     }
     
     public void updateLastBidTimestamp() {
+    	numberOfBids++;
+    	
     	double currentTime = this.getTimeLine().getCurrentTime();
     	this.updateLast15RoundsAvgTime(currentTime);
     	
@@ -88,7 +90,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     
     public void updateLast15RoundsAvgTime(double timestamp) {
     	double timeSpentLastBid = timestamp - this.lastBidTimestamp;
-    	int n = Math.min(this.listOfBids.size(), 15);
+    	int n = Math.min(numberOfBids, 15);
     	this.last15RoundsAvgTime = 
     			this.last15RoundsAvgTime + (timeSpentLastBid - this.last15RoundsAvgTime) / n;
     	
