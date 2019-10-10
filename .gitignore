@@ -29,3 +29,7 @@ etc/*
 log/*
 out/*
 /bin/
+
+.metadata/*
+.project
+.classpath
