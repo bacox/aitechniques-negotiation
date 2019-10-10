@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -12,11 +13,22 @@ import genius.core.parties.NegotiationInfo;
 public class NegotiationAgent extends AbstractNegotiationParty{
 
     private Bid lastReceivedBid = null;
+
     private int numberOfBids = 0;
     private double totalTimeGiven = 0;
     private double last15RoundsAvgTime = 0;
     private double lastBidTimestamp = 0;
     private int currentPhase = 0;
+
+    private enum PHASE {
+        ONE,
+        TWO,
+        THREE;
+    }
+    private double[] phaseFractions = new double[] {28.0/36.0, 7.0/36.0, 1.0/36.0};
+    private PHASE phase;
+
+    private ArrayList<Bid> opponentBids = new ArrayList<Bid>();
 
     @Override
     public void init(NegotiationInfo info) {
@@ -25,6 +37,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
 
         System.out.println("Discount Factor is " + getUtilitySpace().getDiscountFactor());
         System.out.println("Reservation Value is " + getUtilitySpace().getReservationValueUndiscounted());
+        phase = PHASE.ONE;
 
         // if you need to initialize some variables, please initialize them
         // below
@@ -32,13 +45,80 @@ public class NegotiationAgent extends AbstractNegotiationParty{
        
     }
 
+    public double concessionValue(double start, double range, double fraction) {
+        return start - (range * fraction);
+    }
+
+    public double concessionValueByPhase(double time) {
+        switch (phase) {
+            case ONE:
+                return concessionValue(1.0, (3.0/8.0),timeFractionByPhase(time));
+            case TWO:
+                return concessionValue((7.0/8.0), (2.0/8.0),timeFractionByPhase(time));
+            case THREE:
+                return concessionValue((5.0/8.0), (5.0/8.0),timeFractionByPhase(time));
+            default:
+                return 0;
+        }
+    }
+
+    public double timeFractionByPhase(double time) {
+        switch (phase) {
+            case ONE:
+                return time / phaseFractions[0];
+            case TWO:
+                return (time- phaseFractions[0]) / (phaseFractions[1]);
+            case THREE:
+                return (time- phaseFractions[0] - phaseFractions[1]) / (phaseFractions[2]);
+            default:
+                return 0;
+        }
+    }
+
+    public void updatePhase() {
+        double time = getTimeLine().getTime();
+        switch (phase) {
+            case ONE:
+                if( time > phaseFractions[0]) {
+                    phase = PHASE.TWO;
+                }
+                break;
+            case TWO:
+                if( time > phaseFractions[0] + phaseFractions[1]) {
+                    phase = PHASE.THREE;
+                }
+                break;
+            case THREE:
+                break;
+            default:
+        }
+    }
+
+    public double upperBound(double l) {
+        return l + (0.2 * (1 - l));
+    }
+
+    public Bid generateBid() {
+        return generateRandomBid();
+    }
+
+
+
     @Override
     public Action chooseAction(List<Class<? extends Action>> validActions) {
 
-    	Bid bid = generateRandomBid();
+    	Bid bid = generateBid();
     	double bidUtil = this.getUtility(bid);
     	System.out.println("Utility of our bid: " + bidUtil);
     	System.out.println("Utility of last bid received: " + this.getUtility(lastReceivedBid));
+        double time = getTimeLine().getTime();
+        System.out.println("This is phase " + phase + " " + concessionValueByPhase(time) + " \t\t " + timeFractionByPhase(time));
+
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            System.out.println("Not allowed to sleep");
+        }
     	
     	//If the utility of the bid we were going to do is equal to or lower than
     	// the utility of the bid just done by the other party, we accept it.
@@ -52,7 +132,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     	}
     	
     	// Return a new offer
-        return this.actionSetTimestamp(new Offer(getPartyId(), bid)); 
+        return this.actionSetTimestamp(new Offer(getPartyId(), bid));
     }
     
     //Method to set the timestamp just before choosing an action, allowing us to monitor the time between
@@ -65,9 +145,14 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     @Override
     public void receiveMessage(AgentID sender, Action action) {
         super.receiveMessage(sender, action);
+        updatePhase();
         if (action instanceof Offer) {
             lastReceivedBid = ((Offer) action).getBid();
             this.updateLastBidTimestamp();
+            if(phase == PHASE.ONE) {
+//                Save opponents bids for phase two and three
+                opponentBids.add(((Offer) action).getBid());
+            }
         }
     }
 
