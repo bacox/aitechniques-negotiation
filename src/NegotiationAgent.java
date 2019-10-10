@@ -37,6 +37,8 @@ public class NegotiationAgent extends AbstractNegotiationParty{
 
     	Bid bid = generateRandomBid();
     	double bidUtil = this.getUtility(bid);
+    	System.out.println("Utility of our bid: " + bidUtil);
+    	System.out.println("Utility of last bid received: " + this.getUtility(lastReceivedBid));
     	
     	//If the utility of the bid we were going to do is equal to or lower than
     	// the utility of the bid just done by the other party, we accept it.
@@ -44,18 +46,13 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     		return new Accept(getPartyId(), lastReceivedBid); 
     	}
     	
+    	// In phase 3, we accept any bid if we estimate the number of rounds left to be less than 15
     	if (currentPhase == 3 && this.numRoundsLeft() <= 15) {
     		return new Accept(getPartyId(), lastReceivedBid); 
     	}
     	
-    	
-        // with 50% chance, counter offer
-        // if we are the first party, also offer.
-        if (lastReceivedBid == null || !validActions.contains(Accept.class) || Math.random() > 0.5) {
-            return this.actionSetTimestamp(new Offer(getPartyId(), bid)); 
-        } else {
-            return this.actionSetTimestamp(new Accept(getPartyId(), lastReceivedBid)); 
-        }
+    	// Return a new offer
+        return this.actionSetTimestamp(new Offer(getPartyId(), bid)); 
     }
     
     //Method to set the timestamp just before choosing an action, allowing us to monitor the time between
@@ -69,8 +66,8 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     public void receiveMessage(AgentID sender, Action action) {
         super.receiveMessage(sender, action);
         if (action instanceof Offer) {
-            lastReceivedBid = ((Offer) action).getBid();
             this.updateLastBidTimestamp();
+            lastReceivedBid = ((Offer) action).getBid();
         }
     }
 
@@ -82,7 +79,11 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     public void updateLastBidTimestamp() {
     	double currentTime = this.getTimeLine().getCurrentTime();
     	this.updateLast15RoundsAvgTime(currentTime);
+    	
+    	System.out.println(("Last bid timestamp: " + this.lastBidTimestamp));
     	this.lastBidTimestamp = currentTime;
+    	System.out.println(("New bid timestamp: " + this.lastBidTimestamp));
+
     }
     
     public void updateLast15RoundsAvgTime(double timestamp) {
@@ -90,6 +91,8 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     	int n = Math.min(this.listOfBids.size(), 15);
     	this.last15RoundsAvgTime = 
     			this.last15RoundsAvgTime + (timeSpentLastBid - this.last15RoundsAvgTime) / n;
+    	
+    	System.out.println(("last15RoundsAvgTime: " + this.last15RoundsAvgTime));
     }
     
     public double numRoundsLeft() {
