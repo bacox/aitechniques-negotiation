@@ -34,7 +34,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     public void init(NegotiationInfo info) {
 
         super.init(info);
-
+        System.out.println("The user model is: " + userModel);
         System.out.println("Discount Factor is " + getUtilitySpace().getDiscountFactor());
         System.out.println("Reservation Value is " + getUtilitySpace().getReservationValueUndiscounted());
         currentPhase = PHASE.ONE;
@@ -99,15 +99,34 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     }
 
     public Bid generateBid(double l, double u) {
+//        System.out.println("Start generating bid");
+//        List<Bid> bids = getUserModel().getBidRanking().getBidOrder();
         boolean bidInRange = false;
+        int numberGenerated = 0;
         Bid bid = generateRandomBid();
         while(!bidInRange) {
             double util = this.getUtility(bid);
+//            System.out.println("Util value: " + util);
             if(util >= l && util <= u) {
                 bidInRange = true;
+                System.out.println("Bid in range!");
+
+                break;
             }
             bid = generateRandomBid();
+            if(numberGenerated++ > 100){
+                try {
+                    bid = getUtilitySpace().getMaxUtilityBid();
+//                    System.out.println("Max bid!");
+
+                } catch(Exception e) {
+                    System.out.println("Random bid!");
+                }
+                bidInRange = true;
+                break;
+            }
         }
+//        System.out.println("End generating bid");
         return bid;
     }
 
@@ -123,11 +142,14 @@ public class NegotiationAgent extends AbstractNegotiationParty{
         double time = getTimeLine().getTime();
         double l = concessionValueByPhase(time);
         double u = upperBound(l);
+//        System.out.println("This is phase " + currentPhase + " " + concessionValueByPhase(time) + " \t " + timeFractionByPhase(time) + "\t [" + l + ", " + u + "]");
         Bid bid = generateRandomBid();
         if (currentPhase == PHASE.ONE) {
-            if( Math.random() > 0.7) {
+            if( Math.random() <= 0.7) {
+//                System.out.println("There is upper limit");
                 bid = generateBid(l, u);
             } else {
+//                System.out.println("No upper limit");
                 bid = generateBid(l);
             }
         } else {
@@ -136,12 +158,11 @@ public class NegotiationAgent extends AbstractNegotiationParty{
         }
 
         double bidUtil = this.getUtility(bid);
-        System.out.println("Utility of our bid: " + bidUtil);
-        System.out.println("Utility of last bid received: " + this.getUtility(lastReceivedBid));
-        System.out.println("This is phase " + currentPhase + " " + concessionValueByPhase(time) + " \t\t " + timeFractionByPhase(time));
+        System.out.println("Utility of our bid: " + bidUtil + "\t\t["+l+",\t"+u+"]");
+//        System.out.println("Utility of last bid received: " + this.getUtility(lastReceivedBid));
 
         try {
-            Thread.sleep(250);
+            Thread.sleep(100);
         } catch (InterruptedException e) {
             System.out.println("Not allowed to sleep");
         }
@@ -149,12 +170,12 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     	//If the utility of the bid we were going to do is equal to or lower than
     	// the utility of the bid just done by the other party, we accept it.
     	if (lastReceivedBid != null && bidUtil <= this.getUtility(lastReceivedBid)) {
-    		return new Accept(getPartyId(), lastReceivedBid); 
+    		return new Accept(getPartyId(), lastReceivedBid);
     	}
     	
     	// In phase 3, we accept any bid if we estimate the number of rounds left to be less than 15
     	if (currentPhase == PHASE.THREE && this.numRoundsLeft() <= 15) {
-    		return new Accept(getPartyId(), lastReceivedBid); 
+    		return new Accept(getPartyId(), lastReceivedBid);
     	}
     	
     	// Return a new offer
@@ -193,9 +214,9 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     	double currentTime = this.getTimeLine().getCurrentTime();
     	this.updateLast15RoundsAvgTime(currentTime);
     	
-    	System.out.println(("Last bid timestamp: " + this.lastBidTimestamp));
+//    	System.out.println(("Last bid timestamp: " + this.lastBidTimestamp));
     	this.lastBidTimestamp = currentTime;
-    	System.out.println(("New bid timestamp: " + this.lastBidTimestamp));
+//    	System.out.println(("New bid timestamp: " + this.lastBidTimestamp));
 
     }
     
@@ -205,7 +226,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
     	this.last15RoundsAvgTime = 
     			this.last15RoundsAvgTime + (timeSpentLastBid - this.last15RoundsAvgTime) / n;
     	
-    	System.out.println(("last15RoundsAvgTime: " + this.last15RoundsAvgTime));
+//    	System.out.println(("last15RoundsAvgTime: " + this.last15RoundsAvgTime));
     }
     
     public double numRoundsLeft() {
