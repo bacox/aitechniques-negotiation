@@ -1,3 +1,5 @@
+package group44;
+
 import genius.core.Bid;
 
 

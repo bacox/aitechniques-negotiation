@@ -1,7 +1,8 @@
+package group44;
+
 import java.util.*;
 import java.util.ArrayList;
 
-import agents.anac.y2011.ValueModelAgent.BidList;
 import genius.core.AgentID;
 import genius.core.Bid;
 import genius.core.actions.Accept;
@@ -10,7 +11,7 @@ import genius.core.actions.Offer;
 import genius.core.parties.AbstractNegotiationParty;
 import genius.core.parties.NegotiationInfo;
 
-public class NegotiationAgent extends AbstractNegotiationParty{
+public class Group44_Party extends AbstractNegotiationParty{
 
     private Bid lastReceivedBid = null;
 
@@ -46,6 +47,8 @@ public class NegotiationAgent extends AbstractNegotiationParty{
         this.totalTimeGiven = info.getTimeline().getTotalTime();
        
     }
+
+
 
     public double concessionValue(double start, double range, double fraction) {
         return start - (range * fraction);
@@ -221,7 +224,7 @@ public class NegotiationAgent extends AbstractNegotiationParty{
 
     @Override
     public String getDescription() {
-        return "example party group N";
+        return "The negotiation agent of group 44";
     }
     
     public void updateLastBidTimestamp() {
