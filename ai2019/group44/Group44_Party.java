@@ -10,9 +10,11 @@ import genius.core.actions.Action;
 import genius.core.actions.Offer;
 import genius.core.parties.AbstractNegotiationParty;
 import genius.core.parties.NegotiationInfo;
+import genius.core.utility.AdditiveUtilitySpace;
 
 public class Group44_Party extends AbstractNegotiationParty{
 
+	private OpponentModel opponentModel;
     private Bid lastReceivedBid = null;
 
     private int numberOfBids = 0;
@@ -21,17 +23,19 @@ public class Group44_Party extends AbstractNegotiationParty{
     private double lastBidTimestamp = 0;
 
     private boolean firstBidFetch = true;
-//    private int currentPhase = 0;
 
     private enum PHASE {
         ONE,
         TWO,
         THREE;
     }
+    
     private double[] phaseFractions = new double[] {28.0/36.0, 7.0/36.0, 1.0/36.0};
     private PHASE currentPhase;
 
     private ArrayList<BidWrapper> opponentBids = new ArrayList<BidWrapper>();
+    
+    private double epsilon = 0.2;
 
     @Override
     public void init(NegotiationInfo info) {
@@ -45,7 +49,10 @@ public class Group44_Party extends AbstractNegotiationParty{
         // if you need to initialize some variables, please initialize them
         // below
         this.totalTimeGiven = info.getTimeline().getTotalTime();
-       
+        
+      //Initialize opponent model
+        
+      this.opponentModel = new OpponentModel(((AdditiveUtilitySpace) info.getUtilitySpace()), this.epsilon);
     }
 
 
@@ -80,8 +87,7 @@ public class Group44_Party extends AbstractNegotiationParty{
         }
     }
 
-    public void updatePhase() {
-        double time = getTimeLine().getTime();
+    public void updatePhase(double time) {
         switch (currentPhase) {
             case ONE:
                 if( time > phaseFractions[0]) {
@@ -99,7 +105,7 @@ public class Group44_Party extends AbstractNegotiationParty{
         }
     }
 
-
+    
 
 
     public Bid getBoundedBid(double l) {
@@ -175,6 +181,10 @@ public class Group44_Party extends AbstractNegotiationParty{
             }
             System.out.println("In phase " + currentPhase + " sending offer " + getUtility(bid) + "with lower bound " + l);
         }
+        
+        double estimatedOpponentUtil = this.opponentModel.estimateOpponentUtility(bid);
+//        System.out.println("estimated opponent utility: " + estimatedOpponentUtil);
+        
         try {
             Thread.sleep(10);
         } catch (InterruptedException e) {
@@ -209,9 +219,14 @@ public class Group44_Party extends AbstractNegotiationParty{
     @Override
     public void receiveMessage(AgentID sender, Action action) {
         super.receiveMessage(sender, action);
-        updatePhase();
+        double time = getTimeLine().getTime();
+        updatePhase(time);
         if (action instanceof Offer) {
-            lastReceivedBid = ((Offer) action).getBid();
+        	Bid newBid = ((Offer) action).getBid();
+        	if (lastReceivedBid != null) {
+        		this.opponentModel.update(lastReceivedBid, newBid, time);
+        	}
+            lastReceivedBid = newBid;
             this.updateLastBidTimestamp();
             if(currentPhase == PHASE.ONE) {
 //                Save opponents bids for phase two and three
