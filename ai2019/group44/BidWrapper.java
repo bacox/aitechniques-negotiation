@@ -7,6 +7,16 @@ public class BidWrapper implements Comparable<BidWrapper>{
 
     private Bid bid;
     private Double utility;
+    private Boolean hasBeenOffered = false;
+
+
+    public Boolean getHasBeenOffered() {
+        return hasBeenOffered;
+    }
+
+    public void setHasBeenOffered(Boolean hasBeenOffered) {
+        this.hasBeenOffered = hasBeenOffered;
+    }
 
     public BidWrapper(Bid b, double u) {
         bid = b;

@@ -55,6 +55,7 @@ public class Group44_Party extends AbstractNegotiationParty {
 
         // Generate our bidspace with a time limit of 45 seconds
         this.bidSpace = new BidSpace(info.getUtilitySpace(), 45);
+        System.out.println("Has finished bid generation ? " + this.bidSpace.isFinishedSort());
     }
 
     public double concessionValue(double start, double range, double fraction) {
@@ -135,6 +136,8 @@ public class Group44_Party extends AbstractNegotiationParty {
             }
         } else {
             // Get random bid in our possible utility range
+            // Bids are ordered by high to low
+            // Maybe offer bid from the high side instead of random?
             bid = possibilities.get(new Random().nextInt(possibilities.size())).getBid();
         }
         return bid;
@@ -152,6 +155,31 @@ public class Group44_Party extends AbstractNegotiationParty {
         }
     }
 
+    public Bid generatePhaseTwoBid(double l, double u) {
+//        Get bidlist
+        if (Math.random() < 0.3) {
+            u = 1.0;
+        }
+        List<BidWrapper> possibilities = this.bidSpace.getBidsInRange(l, u);
+        for(BidWrapper possibility : possibilities) {
+            double opponentUtility = opponentModel.estimateOpponentUtility(possibility.getBid());
+            if(possibility.getUtility() > opponentUtility) {
+                System.out.println("Found a bid conforming phase 2 " + possibility.getUtility());
+                return possibility.getBid();
+
+            }
+        }
+        if(possibilities.size() > 0) {
+            return possibilities.get(0).getBid();
+        }
+        try {
+            // If the range is too small, just bid the max utility
+            return getUtilitySpace().getMaxUtilityBid();
+        } catch (Exception e) {
+            return bidSpace.maxUtilityBid.getBid();
+        }
+    }
+
 
     @Override
     public Action chooseAction(List<Class<? extends Action>> validActions) {
@@ -164,6 +192,8 @@ public class Group44_Party extends AbstractNegotiationParty {
         Bid bid = null;
         if (currentPhase == PHASE.ONE) {
             bid = generatePhaseOneBid(l, u);
+        } else if(currentPhase == PHASE.TWO){
+            bid = generatePhaseTwoBid(l,u);
         } else {
 //            Phase two and three
             bid = getBoundedBid(l);
@@ -177,7 +207,7 @@ public class Group44_Party extends AbstractNegotiationParty {
 //        System.out.println("estimated opponent utility: " + estimatedOpponentUtil);
 
         try {
-            Thread.sleep(10);
+            Thread.sleep(1);
         } catch (InterruptedException e) {
             System.out.println("Not allowed to sleep");
         }

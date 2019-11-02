@@ -13,6 +13,16 @@ public class BidSpace {
     // Time limit for enumeration and sorting
     private double limit;
 
+    public boolean isFinishedEnumeration() {
+        return finishedEnumeration;
+    }
+
+    public boolean isFinishedSort() {
+        return finishedSort;
+    }
+
+    protected BidWrapper maxUtilityBid;
+
     // Keep track of being finished with enumeration and sorting
     private boolean finishedEnumeration = false;
     private boolean finishedSort = false;
@@ -59,6 +69,7 @@ public class BidSpace {
             Collections.sort(this.allBids, Collections.reverseOrder());
             this.finishedSort = true;
         }
+        maxUtilityBid = this.allBids.get(0);
     }
 
     /**
@@ -80,6 +91,8 @@ public class BidSpace {
             this.finishedEnumeration = true;
             sort(this.limit - (System.nanoTime() - start)); // Start sorting with timeleft
         }
+
+
     }
 
     /**
