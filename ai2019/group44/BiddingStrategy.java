@@ -82,16 +82,34 @@ public class BiddingStrategy {
         }
     }
     private BidWrapper generatePhaseTwoBid(double l, double u){
+        // Get the set bid valid bids from the bidspace given the concession graph
         List<BidWrapper> possibilities = this.bidSpace.getBidsInRange(l, u);
+        BidWrapper bestForOpponents = null;
+        double bestUtilOpponent = 0;
         for(BidWrapper possibility : possibilities) {
+            // Use the opponent model to estimate the opponents utility for this bid.
             double opponentUtility = opponentModel.estimateOpponentUtility(possibility.getBid());
+            // Try to find a bid that has a better utility for us than for them.
+            // But from this set try to find to best bid for the opponent so he is more likely to accept.
             if(possibility.getUtility() > opponentUtility) {
-                return possibility;
+                if(opponentUtility > bestUtilOpponent) {
+                    // Update the best found bid
+                    bestForOpponents = possibility;
+                    bestUtilOpponent = opponentUtility;
+                }
             }
         }
+        // If the opponents estimated utility is still 0 means we did not find a bid within the constraints.
+        // If the opponents estimated utility > 0, we have a valid bid.
+        if(bestUtilOpponent > 0){
+            // We found the best possible bid given the opponent model
+            return bestForOpponents;
+        }
         if(possibilities.size() > 0) {
+            // Our best alternative is to return the best bid given the constraints of the concession graph
             return possibilities.get(0);
         }
+        // If everything fails just return our best possible bid given the domain
         return bidSpace.maxUtilityBid;
     }
 
