@@ -1,5 +1,8 @@
 package group44;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.ArrayList;
 
@@ -15,6 +18,7 @@ import genius.core.utility.AdditiveUtilitySpace;
 public class Group44_Party extends AbstractNegotiationParty {
 
     private OpponentModel opponentModel;
+    private BiddingStrategy biddingStrategy;
     private ArrayList<BidWrapper> opponentBids = new ArrayList<BidWrapper>();
 
     private Bid lastReceivedBid = null;
@@ -28,9 +32,8 @@ public class Group44_Party extends AbstractNegotiationParty {
     private double epsilon = 0.2;
     private double[] phaseFractions = new double[]{28.0 / 36.0, 7.0 / 36.0, 1.0 / 36.0};
 
-    private boolean firstBidFetch = true;
 
-    private enum PHASE {
+    public enum PHASE {
         ONE,
         TWO,
         THREE;
@@ -55,6 +58,7 @@ public class Group44_Party extends AbstractNegotiationParty {
 
         // Generate our bidspace with a time limit of 45 seconds
         this.bidSpace = new BidSpace(info.getUtilitySpace(), 45);
+        this.biddingStrategy = new BiddingStrategy(opponentModel, bidSpace, opponentBids);
         System.out.println("Has finished bid generation ? " + this.bidSpace.isFinishedSort());
     }
 
@@ -107,78 +111,10 @@ public class Group44_Party extends AbstractNegotiationParty {
     }
 
 
-    public Bid getBoundedBid(double l) {
-        if (firstBidFetch) {
-            Collections.sort(opponentBids);
-            firstBidFetch = false;
-        }
-        for (BidWrapper b : opponentBids) {
-            double utility = b.getUtility();
-            if (utility >= l)
-                return b.getBid();
-        }
-        return null;
-    }
-
     public double upperBound(double l) {
         return l + (0.2 * (1 - l));
     }
 
-    public Bid generateBid(double l, double u) {
-        Bid bid = null;
-        List<BidWrapper> possibilities = this.bidSpace.getBidsInRange(l, u);
-        if(possibilities.size() == 0){
-            try {
-                // If the range is too small, just bid the max utility
-                bid = getUtilitySpace().getMaxUtilityBid();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        } else {
-            // Get random bid in our possible utility range
-            // Bids are ordered by high to low
-            // Maybe offer bid from the high side instead of random?
-            bid = possibilities.get(new Random().nextInt(possibilities.size())).getBid();
-        }
-        return bid;
-    }
-
-    public Bid generateBid(double l) {
-        return generateBid(l, 1.0);
-    }
-
-    public Bid generatePhaseOneBid(double l, double u) {
-        if (Math.random() <= 0.7) {
-            return generateBid(l, u);
-        } else {
-            return generateBid(l);
-        }
-    }
-
-    public Bid generatePhaseTwoBid(double l, double u) {
-//        Get bidlist
-        if (Math.random() < 0.3) {
-            u = 1.0;
-        }
-        List<BidWrapper> possibilities = this.bidSpace.getBidsInRange(l, u);
-        for(BidWrapper possibility : possibilities) {
-            double opponentUtility = opponentModel.estimateOpponentUtility(possibility.getBid());
-            if(possibility.getUtility() > opponentUtility) {
-                System.out.println("Found a bid conforming phase 2 " + possibility.getUtility());
-                return possibility.getBid();
-
-            }
-        }
-        if(possibilities.size() > 0) {
-            return possibilities.get(0).getBid();
-        }
-        try {
-            // If the range is too small, just bid the max utility
-            return getUtilitySpace().getMaxUtilityBid();
-        } catch (Exception e) {
-            return bidSpace.maxUtilityBid.getBid();
-        }
-    }
 
 
     @Override
@@ -190,24 +126,15 @@ public class Group44_Party extends AbstractNegotiationParty {
         double l = concessionValueByPhase(getTimeLine().getTime());
         double u = upperBound(l);
         Bid bid = null;
-        if (currentPhase == PHASE.ONE) {
-            bid = generatePhaseOneBid(l, u);
-        } else if(currentPhase == PHASE.TWO){
-            bid = generatePhaseTwoBid(l,u);
-        } else {
-//            Phase two and three
-            bid = getBoundedBid(l);
-            if (bid == null) {
-                bid = generatePhaseOneBid(l, u);
-            }
-            System.out.println("In phase " + currentPhase + " sending offer " + getUtility(bid) + "with lower bound " + l);
-        }
+        bid = biddingStrategy.generateBid(l, u, currentPhase, getTimeLine().getTime());
+
+        System.out.println("In phase " + currentPhase + " sending offer " + getUtility(bid) + "with lower bound " + l);
 
         double estimatedOpponentUtil = this.opponentModel.estimateOpponentUtility(bid);
 //        System.out.println("estimated opponent utility: " + estimatedOpponentUtil);
 
         try {
-            Thread.sleep(1);
+            Thread.sleep(10);
         } catch (InterruptedException e) {
             System.out.println("Not allowed to sleep");
         }
@@ -286,5 +213,31 @@ public class Group44_Party extends AbstractNegotiationParty {
 
     public double numRoundsLeft() {
         return (this.totalTimeGiven - this.getTimeLine().getCurrentTime()) / this.last15RoundsAvgTime;
+    }
+
+    @Override
+    public HashMap<String, String> negotiationEnded(Bid acceptedBid) {
+//        Negotiation has ended
+//        Save data
+        biddingStrategy.printBidHistory();
+
+//        Save data to csv
+        PrintWriter pw = null;
+        try {
+            pw = new PrintWriter(new File("history.csv"));
+            StringBuilder sb = new StringBuilder();
+            sb.append("Time, Utility\n");
+            for(BiddingStrategy.HistoryItem h: biddingStrategy.bidHistory) {
+                sb.append(String.valueOf(h.time))
+                    .append(",")
+                    .append(String.valueOf(h.bidWrapper.getUtility()))
+                    .append("\n");
+            }
+            pw.write(sb.toString());
+            pw.close();
+        } catch (FileNotFoundException e) {
+            System.out.println(e.getMessage());
+        }
+        return super.negotiationEnded(acceptedBid);
     }
 }
