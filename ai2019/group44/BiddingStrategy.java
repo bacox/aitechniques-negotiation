@@ -2,6 +2,8 @@ package group44;
 
 import genius.core.Bid;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -11,10 +13,14 @@ public class BiddingStrategy {
 
     public class HistoryItem {
         public double time;
+        public double lowerBound;
+        public double upperBound;
         public BidWrapper bidWrapper;
-        public HistoryItem(double t, BidWrapper bw) {
+        public HistoryItem(double t, BidWrapper bw, double l, double u) {
             this.time = t;
             this.bidWrapper = bw;
+            lowerBound = l;
+            upperBound = u;
         }
     }
 
@@ -63,11 +69,12 @@ public class BiddingStrategy {
                 generatedBid = generatePhaseOneBid(l,u);
 
         }
-        bidHistory.add(new HistoryItem(time, generatedBid));
+        bidHistory.add(new HistoryItem(time, generatedBid, l, u));
         return generatedBid.getBid();
     }
 
     private BidWrapper generatePhaseOneBid(double l, double u){
+//        Was 0.7
         if (Math.random() <= 0.7) {
             return createBid(l, u);
         } else {
@@ -75,22 +82,16 @@ public class BiddingStrategy {
         }
     }
     private BidWrapper generatePhaseTwoBid(double l, double u){
-        if (Math.random() < 0.3) {
-            u = 1.0;
-        }
         List<BidWrapper> possibilities = this.bidSpace.getBidsInRange(l, u);
         for(BidWrapper possibility : possibilities) {
             double opponentUtility = opponentModel.estimateOpponentUtility(possibility.getBid());
             if(possibility.getUtility() > opponentUtility) {
-                System.out.println("Found a bid conforming phase 2 " + possibility.getUtility());
                 return possibility;
-
             }
         }
         if(possibilities.size() > 0) {
             return possibilities.get(0);
         }
-
         return bidSpace.maxUtilityBid;
     }
 
@@ -111,6 +112,31 @@ public class BiddingStrategy {
     public void printBidHistory() {
         for(HistoryItem h : bidHistory) {
             System.out.println("Time: " + h.time + "\t\t utility of bid: " + h.bidWrapper.getUtility());
+        }
+    }
+
+    public void saveHistoryToCsv(String filename) {
+        FileWriter pw = null;
+        try {
+            pw = new FileWriter(new File(filename), false);
+            StringBuilder sb = new StringBuilder();
+            sb.append("Time, Utility, Lower Bound, Upper Bound\n");
+            for(BiddingStrategy.HistoryItem h: bidHistory) {
+                sb.append(h.time)
+                        .append(",")
+                        .append(h.bidWrapper.getUtility())
+                        .append(",")
+                        .append(h.lowerBound)
+                        .append(",")
+                        .append(h.upperBound)
+                        .append("\n");
+            }
+            pw.write(sb.toString());
+            pw.close();
+            System.out.println("Data saved to file");
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            System.out.println("Unable to save data to file");
         }
     }
 

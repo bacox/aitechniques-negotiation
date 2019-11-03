@@ -2,6 +2,7 @@ package group44;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.util.*;
 import java.util.ArrayList;
@@ -128,13 +129,13 @@ public class Group44_Party extends AbstractNegotiationParty {
         Bid bid = null;
         bid = biddingStrategy.generateBid(l, u, currentPhase, getTimeLine().getTime());
 
-        System.out.println("In phase " + currentPhase + " sending offer " + getUtility(bid) + "with lower bound " + l);
+//        System.out.println("In phase " + currentPhase + " sending offer " + getUtility(bid) + "with lower bound " + l);
 
         double estimatedOpponentUtil = this.opponentModel.estimateOpponentUtility(bid);
 //        System.out.println("estimated opponent utility: " + estimatedOpponentUtil);
 
         try {
-            Thread.sleep(10);
+            Thread.sleep(20);
         } catch (InterruptedException e) {
             System.out.println("Not allowed to sleep");
         }
@@ -153,7 +154,7 @@ public class Group44_Party extends AbstractNegotiationParty {
         }
 
         // Return a new offer
-        System.out.println("New offer: " + getUtility(bid));
+//        System.out.println("New offer: " + getUtility(bid));
         return this.actionSetTimestamp(new Offer(getPartyId(), bid));
     }
 
@@ -218,26 +219,9 @@ public class Group44_Party extends AbstractNegotiationParty {
     @Override
     public HashMap<String, String> negotiationEnded(Bid acceptedBid) {
 //        Negotiation has ended
-//        Save data
-        biddingStrategy.printBidHistory();
 
 //        Save data to csv
-        PrintWriter pw = null;
-        try {
-            pw = new PrintWriter(new File("history.csv"));
-            StringBuilder sb = new StringBuilder();
-            sb.append("Time, Utility\n");
-            for(BiddingStrategy.HistoryItem h: biddingStrategy.bidHistory) {
-                sb.append(String.valueOf(h.time))
-                    .append(",")
-                    .append(String.valueOf(h.bidWrapper.getUtility()))
-                    .append("\n");
-            }
-            pw.write(sb.toString());
-            pw.close();
-        } catch (FileNotFoundException e) {
-            System.out.println(e.getMessage());
-        }
+        biddingStrategy.saveHistoryToCsv("history.csv");
         return super.negotiationEnded(acceptedBid);
     }
 }
