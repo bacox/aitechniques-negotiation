@@ -45,19 +45,14 @@ public class Group44_Party extends AbstractNegotiationParty {
 
 	@Override
 	public void init(NegotiationInfo info) {
-		System.out.println("initting");
-		System.out.println("info is: "+ info.getUserModel());
 		super.init(info);
-		this.userModel = info.getUserModel();
-		System.out.println("The user model is: " + userModel); // This is null
+		System.out.println("The user model is: " + userModel); 
 		System.out.println("Discount Factor is " + getUtilitySpace().getDiscountFactor());
 		System.out.println("Reservation Value is " + getUtilitySpace().getReservationValueUndiscounted());
 		currentPhase = PHASE.ONE;
 
 		// If you need to initialize some variables, please initialize them below
 		this.totalTimeGiven = info.getTimeline().getTotalTime();
-
-//		this.userModel = info.getUserModel();
 
 		// Initialize opponent model
 		this.opponentModel = new OpponentModel(((AdditiveUtilitySpace) info.getUtilitySpace()), this.epsilon);
@@ -67,7 +62,7 @@ public class Group44_Party extends AbstractNegotiationParty {
 		this.biddingStrategy = new BiddingStrategy(opponentModel, bidSpace, opponentBids);
 		System.out.println("Has finished bid generation ? " + this.bidSpace.isFinishedSort());
 		
-		// If we are dealing with preference uncertainty, we want do know what we have estimated and how good we are at this
+		// If we are dealing with preference uncertainty, we want to know what we have estimated and how good we are at this
 		if (hasPreferenceUncertainty()) {
 			System.out.println("Preference uncertainty");
 			System.out.println("Lowest util: " + userModel.getBidRanking().getLowUtility() 
@@ -189,24 +184,21 @@ public class Group44_Party extends AbstractNegotiationParty {
 
 	@Override
 	public AbstractUtilitySpace estimateUtilitySpace() {
-		System.out.println("Trying to estimate aahhhh!!");
-		System.out.println(userModel);
-		this.uncertaintyModel = new UncertaintyModel(userModel);
-		Map<Issue, Double> weights = uncertaintyModel.getWeights();
-		Map<Issue, HashMap<ValueDiscrete, Integer>> issueValues = uncertaintyModel.getIssueValues();
-
 		AdditiveUtilitySpaceFactory additiveUtilitySpaceFactory = new AdditiveUtilitySpaceFactory(getDomain());
+		this.userModel = getUserModel();
+		this.uncertaintyModel = new UncertaintyModel();
+		this.uncertaintyModel.initEstimation(userModel);
+		Map<Issue, Double> weights = uncertaintyModel.getWeights();
+		Map<Issue, HashMap<ValueDiscrete, Double>> issueValues = uncertaintyModel.getIssueValues();
 		
-		for (Bid bid : userModel.getBidRanking().getBidOrder()) {
-			for (Issue issue : bid.getIssues()) {
-				additiveUtilitySpaceFactory.setWeight(issue, weights.get(issue));
-				double estimatedUtil = weights.get(issue) * issueValues.get(issue).get(bid.getValue(issue));
-				additiveUtilitySpaceFactory.setUtility(issue, (ValueDiscrete) bid.getValue(issue), estimatedUtil);
-			}
+		for (Issue issue : weights.keySet()) {			
+			additiveUtilitySpaceFactory.setWeight(issue, weights.get(issue));
+			
+			for (ValueDiscrete value : issueValues.get(issue).keySet()) {
+				additiveUtilitySpaceFactory.setUtility(issue, value, issueValues.get(issue).get(value));
+			}			
 		}
-
-		// The factory is done with setting all parameters, now return the estimated
-		// utility space
+		
 		return additiveUtilitySpaceFactory.getUtilitySpace();
 	}
 
