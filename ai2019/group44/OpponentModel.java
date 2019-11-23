@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-
+// Class to represent the Opponent Model
 public class OpponentModel {
 
 	private Map<Issue, Double> weights;
@@ -28,6 +28,7 @@ public class OpponentModel {
 		this.epsilon = epsilon;
 	}
 	
+	// Init the weights map with uniform weights for each issue
 	private void initWeights(AdditiveUtilitySpace utilSpace) {
 		this.weights = new HashMap<Issue, Double>();
 		
@@ -36,6 +37,7 @@ public class OpponentModel {
 		}
 	}
 	
+	// Init the utilities map with a value of 1 for all (issue, value)-pairs
 	private void initValueUtilities(AdditiveUtilitySpace utilSpace) {
 		this.valueUtilities = new HashMap<Issue, HashMap<ValueDiscrete, Integer>>();
 
@@ -48,17 +50,19 @@ public class OpponentModel {
 		}
 	}
 	
+	// Update the weights and values corresponding to a received bid
 	public void update(Bid lastReceivedBid, Bid newBid, double time) {
 		updateEpsilon(time);
 		
 		for (Issue issue : newBid.getIssues()) {
 			ValueDiscrete issueValue = (ValueDiscrete) newBid.getValue(issue);
 			
-			// Check if value of issue is unchanged since last bid
+			// Check if value of issue is unchanged since last bid, if so, update the weights
 			if (issueValue.equals((ValueDiscrete)lastReceivedBid.getValue(issue))) {
 				this.updateWeights(issue);
 			}
 			
+			// Increment the value utility
 			this.incrementValueUtility(issue, issueValue);
 		}
 	}
@@ -85,11 +89,13 @@ public class OpponentModel {
 		}
 	}
 	
+	// Method to increment the utility of a value
 	private void incrementValueUtility(Issue issue, ValueDiscrete issueValue) {
 		this.valueUtilities.get(issue).replace(issueValue, 
 				this.valueUtilities.get(issue).get(issueValue) + 1);
 	}
 	
+	// Estimate the utility of the bid we are currently making for the opponent
 	public double estimateOpponentUtility(Bid bid) {
 		double utility = 0.0;
 		

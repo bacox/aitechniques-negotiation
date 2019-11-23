@@ -64,17 +64,18 @@ public class Group44_Party extends AbstractNegotiationParty {
 		
 		// If we are dealing with preference uncertainty, we want to know what we have estimated and how good we are at this
 		if (hasPreferenceUncertainty()) {
-			System.out.println("Preference uncertainty");
-			System.out.println("Lowest util: " + userModel.getBidRanking().getLowUtility() 
-				    + ". Highest util: " + userModel.getBidRanking().getHighUtility());
+			System.out.println("We are dealing with preference uncertainty");
+			System.out.println("Lowest utility: " + userModel.getBidRanking().getLowUtility() 
+				    + ". Highest utility: " + userModel.getBidRanking().getHighUtility());
 			System.out.println("The estimated utility space is: " + getUtilitySpace());
 
 			Bid randomBid = getUtilitySpace().getDomain().getRandomBid(rand);
 			
 			System.out.println("The estimate of the utility of a random bid (" + randomBid	+ ") is: " + getUtility(randomBid));
 			
+			// This is only possible if we have access to the real user model (if the Experimental Setup is enabled in Genius)
 			if (userModel instanceof ExperimentalUserModel) {
-				System.out.println("You have given the agent access to the real utility space for debugging purposes.");
+				System.out.println("We have access to the real user model.");
 				
 				ExperimentalUserModel experimentalModel = (ExperimentalUserModel) userModel;
 				AbstractUtilitySpace realUtilSpace = experimentalModel.getRealUtilitySpace();
@@ -150,10 +151,7 @@ public class Group44_Party extends AbstractNegotiationParty {
 		Bid bid = null;
 		bid = biddingStrategy.generateBid(l, u, currentPhase, getTimeLine().getTime());
 
-//        System.out.println("In phase " + currentPhase + " sending offer " + getUtility(bid) + "with lower bound " + l);
-
 		double estimatedOpponentUtil = this.opponentModel.estimateOpponentUtility(bid);
-//        System.out.println("estimated opponent utility: " + estimatedOpponentUtil);
 
 		try {
 			Thread.sleep(20);
@@ -178,19 +176,23 @@ public class Group44_Party extends AbstractNegotiationParty {
 		}
 
 		// Return a new offer
-//        System.out.println("New offer: " + getUtility(bid));
 		return this.actionSetTimestamp(new Offer(getPartyId(), bid));
 	}
 
+	// Method to estimate our own utility space, used in case of preference uncertainty
 	@Override
 	public AbstractUtilitySpace estimateUtilitySpace() {
 		AdditiveUtilitySpaceFactory additiveUtilitySpaceFactory = new AdditiveUtilitySpaceFactory(getDomain());
 		this.userModel = getUserModel();
 		this.uncertaintyModel = new UncertaintyModel();
+		
+		// Initialize the uncertainty model to deal with preference uncertainty
 		this.uncertaintyModel.initEstimation(userModel);
+		// Get the estimated weights and utilities from the uncertainty model 
 		Map<Issue, Double> weights = uncertaintyModel.getWeights();
 		Map<Issue, HashMap<ValueDiscrete, Double>> issueValues = uncertaintyModel.getIssueValues();
 		
+		// Copy the weights and utilities to the utility space
 		for (Issue issue : weights.keySet()) {			
 			additiveUtilitySpaceFactory.setWeight(issue, weights.get(issue));
 			
@@ -226,7 +228,6 @@ public class Group44_Party extends AbstractNegotiationParty {
 //                Save opponents bids for phase two and three
 				Bid b = ((Offer) action).getBid();
 				opponentBids.add(new BidWrapper(b, getUtility(b)));
-//                opponentBids.add(((Offer) action).getBid());
 			}
 		}
 	}
@@ -242,9 +243,7 @@ public class Group44_Party extends AbstractNegotiationParty {
 		double currentTime = this.getTimeLine().getCurrentTime();
 		this.updateLast15RoundsAvgTime(currentTime);
 
-//    	System.out.println(("Last bid timestamp: " + this.lastBidTimestamp));
 		this.lastBidTimestamp = currentTime;
-//    	System.out.println(("New bid timestamp: " + this.lastBidTimestamp));
 
 	}
 
@@ -253,7 +252,6 @@ public class Group44_Party extends AbstractNegotiationParty {
 		int n = Math.min(numberOfBids, 15);
 		this.last15RoundsAvgTime = this.last15RoundsAvgTime + (timeSpentLastBid - this.last15RoundsAvgTime) / n;
 
-//    	System.out.println(("last15RoundsAvgTime: " + this.last15RoundsAvgTime));
 	}
 
 	public double numRoundsLeft() {
@@ -269,7 +267,4 @@ public class Group44_Party extends AbstractNegotiationParty {
 		return super.negotiationEnded(acceptedBid);
 	}
 
-//	public boolean hasPreferenceUncertainty() {
-//		return (this.userModel != null);
-//	}
 }
