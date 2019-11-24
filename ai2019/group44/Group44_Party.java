@@ -151,8 +151,6 @@ public class Group44_Party extends AbstractNegotiationParty {
 		Bid bid = null;
 		bid = biddingStrategy.generateBid(l, u, currentPhase, getTimeLine().getTime());
 
-		double estimatedOpponentUtil = this.opponentModel.estimateOpponentUtility(bid);
-
 		try {
 			Thread.sleep(20);
 		} catch (InterruptedException e) {
