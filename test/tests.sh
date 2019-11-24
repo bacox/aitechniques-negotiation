@@ -42,7 +42,6 @@ for ((i=0;i<4;i=i+1)); do
     for j in ${agents[@]}; do
         PART="${PART} $j"
     done
-    PART="${PART} $our_agent"
     for ((j=0;j<2;j=j+1)); do
         PREF="${PREF} ${domains[$i,$j]}"
     done
@@ -53,7 +52,7 @@ for ((i=0;i<4;i=i+1)); do
     cat results.csv | sed '1d' > results_${names[$i]}.csv
     rm results.csv
 
-    python session_xml.py --agent $our_agent --parties $our_agent $our_old_agent --preferences $PREF --repeat 10
+    python session_xml.py --agent $our_agent --parties $our_agent $our_old_agent --preferences $PREF --repeat 5
     cd ../dependency
     java.exe -cp ../dependency/genius-9.1.11.jar genius.cli.Runner ../test/test_tournament.xml ../test/results
     cd ../test
